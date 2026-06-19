@@ -1,0 +1,27 @@
+body {
+    margin: 0;
+    padding: 0;
+    background: black;
+    overflow: hidden;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+canvas {
+    display: block;
+}
+
+#hud {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    color: #0f0;
+    font-size: 14px;
+    text-shadow: 0 0 5px #0f0;
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.highlight {
+    color: #fff;
+    text-shadow: 0 0 8px #fff;
+}

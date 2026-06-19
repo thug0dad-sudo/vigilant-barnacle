@@ -1,0 +1,21 @@
+{
+  "modes": {
+    "1": {
+      "name": "Space",
+      "tickers": ["RKLB", "LUNR", "ASTS", "PLTR"]
+    },
+    "2": {
+      "name": "Crypto",
+      "tickers": ["BTC", "ETH"]
+    },
+    "3": {
+      "name": "Index",
+      "tickers": ["SPY", "QQQ"]
+    },
+    "4": {
+      "name": "All",
+      "tickers": ["RKLB", "LUNR", "ASTS", "PLTR", "BTC", "ETH", "SPY", "QQQ"]
+    }
+  },
+  "refreshInterval": 60000
+}
