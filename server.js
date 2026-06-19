@@ -11,7 +11,9 @@ const PORT = process.env.PORT || 18891;
 // Force public directory usage
 app.use("/" , express.static(path.join(__dirname, "public")));
 
-app.get("/api/quotes", (req, res) => {
+app.get("/api/config", (req, res) => {
+  res.sendFile(path.join(__dirname, "config.json"));
+});
   console.log("Quote API Access");
   res.json({
     updatedAt: new Date().toISOString(),

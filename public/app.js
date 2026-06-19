@@ -11,12 +11,7 @@ const rowHeight = 22;
 const columnWidth = 92;
 const trailLength = 18;
 
-const watchlists = {
-  space: ["RKLB", "LUNR", "ASTS", "PLTR"],
-  crypto: ["BTC", "ETH"],
-  index: ["SPY", "QQQ"],
-  all: ["NVDA", "BTC", "ETH", "RKLB", "LUNR", "ASTS", "PLTR", "SPY", "QQQ"]
-};
+let config = {};
 
 let streams = [];
 
@@ -41,7 +36,9 @@ function quoteMap() {
 
 function activeQuotes() {
   const map = quoteMap();
-  return watchlists[mode].map(s => map[s]).filter(Boolean);
+  const modeKey = mode === "all" ? "4" : (mode === "space" ? "1" : (mode === "crypto" ? "2" : "3"));
+  const tickers = config.modes[modeKey] || [];
+  return tickers.map(s => map[s]).filter(Boolean);
 }
 
 function formatPrice(n) {
@@ -88,6 +85,25 @@ function resize() {
 window.addEventListener("resize", resize);
 resize();
 
+async function loadConfig() {
+  try {
+    const res = await fetch("/api/config");
+    config = await res.json();
+    console.log("Configuration loaded:", config);
+  } catch (e) {
+    console.error("Failed to load configuration, falling back to defaults.", e);
+    // Fallback if config fails: mapping 1-4 to the local ones
+    config = {
+      modes: {
+        "1": { name: "Space", tickers: ["RKLB", "LUNR", "ASTS", "PLTR"] },
+        "2": { name: "Crypto", tickers: ["BTC", "ETH"] },
+        "3": { name: "Index", tickers: ["SPY", "QQQ"] },
+        "4": { name: "All", tickers: ["RKLB", "LUNR", "ASTS", "PLTR", "BTC", "ETH", "SPY", "QQQ"] }
+      }
+    };
+  }
+}
+
 async function loadQuotes() {
   try {
     const res = await fetch("/api/quotes");
@@ -97,8 +113,10 @@ async function loadQuotes() {
     quotes = fallbackQuotes();
   }
 }
+
+await loadConfig();
 loadQuotes();
-setInterval(loadQuotes, 5000);
+setInterval(loadQuotes, 60000);
 
 function colorFor(change, alpha, head = false) {
   if (head) {

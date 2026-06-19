@@ -4,3 +4,4 @@ node_modules/
 npm-debug.log*
 backups/
 openclaw-tool-test.txt
+.vercel
