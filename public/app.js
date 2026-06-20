@@ -71,7 +71,7 @@ function resize() {
 function drawStream(stream) {
   stream.y += stream.speed * speedMultiplier;
 
-  if (stream.y - trailLength * rowHeight > canvas.height) {
+  if (stream.y > canvas.height) {
     Object.assign(stream, makeStream(stream.x));
     stream.y = -Math.random() * 300;
   }
@@ -85,7 +85,7 @@ function drawStream(stream) {
   }
 
   for (let i = 0; i < stream.tokens.length; i++) {
-    const y = stream.y - i * rowHeight;
+    const y = stream.y + i * rowHeight;
     if (y < -40 || y > canvas.height + 40) continue;
 
     const alpha = 1 - i / trailLength;
