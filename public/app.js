@@ -1,78 +1,64 @@
 const canvas = document.getElementById("rain");
 const ctx = canvas.getContext("2d");
 
+const VERSION = "1.2";
 let oled = false;
-let quotes = [];
-let mode = "all";
 let speedMultiplier = 1.0;
 
 const fontSize = 18;
 const rowHeight = 22;
 const columnWidth = 92;
-const trailLength = 18;
+const trailLength = 22;
 
-let config = {};
+let quotes = [
+  { symbol: "NVDA", price: 145.23, changePercent: 2.14 },
+  { symbol: "BTC", price: 104250, changePercent: 1.32 },
+  { symbol: "ETH", price: 3520, changePercent: -0.42 },
+  { symbol: "RKLB", price: 22.18, changePercent: 3.01 },
+  { symbol: "LUNR", price: 9.72, changePercent: -1.22 },
+  { symbol: "ASTS", price: 31.64, changePercent: 4.88 },
+  { symbol: "PLTR", price: 142.05, changePercent: 0.74 },
+  { symbol: "SPY", price: 548.66, changePercent: 0.21 },
+  { symbol: "QQQ", price: 481.91, changePercent: 0.35 }
+];
 
 let streams = [];
-
-function fallbackQuotes() {
-  return [
-    { symbol: "NVDA", price: 145.23, changePercent: 2.14 },
-    { symbol: "BTC", price: 104250, changePercent: 1.32 },
-    { symbol: "ETH", price: 3520, changePercent: -0.42 },
-    { symbol: "RKLB", price: 22.18, changePercent: 3.01 },
-    { symbol: "LUNR", price: 9.72, changePercent: -1.22 },
-    { symbol: "ASTS", price: 31.64, changePercent: 4.88 },
-    { symbol: "PLTR", price: 142.05, changePercent: 0.74 },
-    { symbol: "SPY", price: 548.66, changePercent: 0.21 },
-    { symbol: "QQQ", price: 481.91, changePercent: 0.35 }
-  ];
-}
-
-function quoteMap() {
-  const list = quotes.length ? quotes : fallbackQuotes();
-  return Object.fromEntries(list.map(q => [q.symbol, q]));
-}
-
-function activeQuotes() {
-  const map = quoteMap();
-  const modeKey = mode === "all" ? "4" : (mode === "space" ? "1" : (mode === "crypto" ? "2" : "3"));
-  const tickers = config.modes[modeKey] || [];
-  return tickers.map(s => map[s]).filter(Boolean);
-}
 
 function formatPrice(n) {
   if (n >= 1000) return Math.round(n).toLocaleString();
   return Number(n).toFixed(2);
 }
 
+function randomQuote() {
+  return quotes[Math.floor(Math.random() * quotes.length)];
+}
+
 function makeToken(q) {
   const arrow = q.changePercent >= 0 ? "▲" : "▼";
   const r = Math.random();
 
-  if (r < 0.50) return q.symbol;
-  if (r < 0.70) return `${q.symbol}${arrow}`;
+  if (r < 0.48) return q.symbol;
+  if (r < 0.68) return `${q.symbol}${arrow}`;
   if (r < 0.86) return `${q.changePercent >= 0 ? "+" : ""}${q.changePercent.toFixed(2)}%`;
   return `$${formatPrice(q.price)}`;
 }
 
 function makeStream(x) {
-  const list = activeQuotes();
-  const q = list[Math.floor(Math.random() * list.length)] || fallbackQuotes()[0];
+  const quote = randomQuote();
 
   return {
     x,
     y: -Math.random() * canvas.height,
-    speed: 0.28 + Math.random() * 0.38,
-    quote: q,
-    tokens: Array.from({ length: trailLength }, () => makeToken(q)),
+    speed: 0.7 + Math.random() * 1.4,
+    quote,
+    tokens: Array.from({ length: trailLength }, () => makeToken(quote)),
     tick: 0,
-    tickEvery: 18 + Math.floor(Math.random() * 20)
+    tickEvery: 8 + Math.floor(Math.random() * 14)
   };
 }
 
 function resetStreams() {
-  const count = Math.floor(canvas.width / columnWidth);
+  const count = Math.max(8, Math.floor(window.innerWidth / columnWidth));
   streams = Array.from({ length: count }, (_, i) => makeStream(i * columnWidth + 8));
 }
 
@@ -82,130 +68,108 @@ function resize() {
   resetStreams();
 }
 
-window.addEventListener("resize", resize);
-resize();
+function drawStream(stream) {
+  stream.y += stream.speed * speedMultiplier;
 
-async function loadConfig() {
-  try {
-    const res = await fetch("/api/config");
-    config = await res.json();
-    console.log("Configuration loaded:", config);
-  } catch (e) {
-    console.error("Failed to load configuration, falling back to defaults.", e);
-    // Fallback if config fails: mapping 1-4 to the local ones
-    config = {
-      modes: {
-        "1": { name: "Space", tickers: ["RKLB", "LUNR", "ASTS", "PLTR"] },
-        "2": { name: "Crypto", tickers: ["BTC", "ETH"] },
-        "3": { name: "Index", tickers: ["SPY", "QQQ"] },
-        "4": { name: "All", tickers: ["RKLB", "LUNR", "ASTS", "PLTR", "BTC", "ETH", "SPY", "QQQ"] }
-      }
-    };
-  }
-}
-
-async function loadQuotes() {
-  try {
-    const res = await fetch("/api/quotes");
-    const data = await res.json();
-    quotes = data.quotes || [];
-  } catch {
-    quotes = fallbackQuotes();
-  }
-}
-
-await loadConfig();
-loadQuotes();
-setInterval(loadQuotes, 60000);
-
-function colorFor(change, alpha, head = false) {
-  if (head) {
-    if (change < 0) return `rgba(255,185,190,${alpha})`;
-    return `rgba(210,255,225,${alpha})`;
+  if (stream.y - trailLength * rowHeight > canvas.height) {
+    Object.assign(stream, makeStream(stream.x));
+    stream.y = -Math.random() * 300;
   }
 
-  if (change < 0) return `rgba(255,55,70,${alpha})`;
-  return `rgba(0,220,90,${alpha})`;
-}
-
-function drawStream(s) {
-  s.y += s.speed * speedMultiplier;
-  s.tick++;
-
-  if (s.tick >= s.tickEvery) {
-    s.tick = 0;
-    const list = activeQuotes();
-    s.quote = list[Math.floor(Math.random() * list.length)] || s.quote;
-    s.tokens.unshift(makeToken(s.quote));
-    s.tokens.pop();
+  stream.tick++;
+  if (stream.tick >= stream.tickEvery) {
+    stream.tick = 0;
+    stream.quote = randomQuote();
+    stream.tokens.pop();
+    stream.tokens.unshift(makeToken(stream.quote));
   }
 
-  for (let i = 0; i < s.tokens.length; i++) {
-    const y = s.y - i * rowHeight;
-    if (y < -rowHeight || y > canvas.height + rowHeight) continue;
+  for (let i = 0; i < stream.tokens.length; i++) {
+    const y = stream.y - i * rowHeight;
+    if (y < -40 || y > canvas.height + 40) continue;
 
-    const isHead = i === 0;
-    const fade = 1 - i / s.tokens.length;
-    const alpha = oled
-      ? Math.max(0.04, fade * 0.45)
-      : Math.max(0.06, fade * 0.78);
+    const alpha = 1 - i / trailLength;
+    const positive = stream.quote.changePercent >= 0;
 
-    ctx.fillStyle = colorFor(s.quote.changePercent, alpha, isHead);
-    ctx.shadowBlur = isHead && !oled ? 8 : 0;
-    ctx.shadowColor = colorFor(s.quote.changePercent, 0.9, isHead);
-    ctx.fillText(s.tokens[i], s.x, y);
+    if (i === 0) {
+      ctx.fillStyle = oled ? "rgba(255,255,255,0.95)" : "rgba(210,255,210,0.95)";
+      ctx.shadowColor = positive ? "#00ff66" : "#ff3355";
+      ctx.shadowBlur = 14;
+    } else {
+      ctx.fillStyle = positive
+        ? `rgba(0,255,90,${alpha * 0.78})`
+        : `rgba(255,50,90,${alpha * 0.68})`;
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.fillText(stream.tokens[i], stream.x, y);
   }
 
-  if (s.y - trailLength * rowHeight > canvas.height) {
-    const replacement = makeStream(s.x);
-    s.y = -Math.random() * canvas.height * 0.7;
-    s.speed = replacement.speed;
-    s.quote = replacement.quote;
-    s.tokens = replacement.tokens;
-    s.tickEvery = replacement.tickEvery;
-  }
+  ctx.shadowBlur = 0;
 }
 
 function drawHud() {
-  const label = `OpenClaw Market Rain · ${mode.toUpperCase()} · Speed ${speedMultiplier.toFixed(1)}x · +/- Speed · 0 Reset · 1 Space · 2 Crypto · 3 Index · 4 All · F Fullscreen · O OLED`;
-  const hud = document.getElementById("hud");
-  if (hud) hud.textContent = label;
+  ctx.font = "14px monospace";
+  ctx.fillStyle = "rgba(0,255,90,0.9)";
+  ctx.fillText(
+    `OpenClaw Market Rain · F Fullscreen · O OLED · + Faster · - Slower · 0 Reset · Speed ${speedMultiplier.toFixed(1)}x · Version ${VERSION}`,
+    14,
+    canvas.height - 18
+  );
 }
 
 function draw() {
-  ctx.fillStyle = "black";
+  ctx.fillStyle = oled ? "rgba(0,0,0,0.34)" : "rgba(0,0,0,0.22)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.font = `${fontSize}px monospace`;
   ctx.textBaseline = "top";
 
-  for (const stream of streams) drawStream(stream);
-  drawHud();
+  for (const stream of streams) {
+    drawStream(stream);
+  }
 
+  drawHud();
   requestAnimationFrame(draw);
 }
 
-draw();
+async function loadQuotes() {
+  try {
+    const res = await fetch("/api/quotes", { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (Array.isArray(data.quotes) && data.quotes.length) {
+      quotes = data.quotes;
+    }
+  } catch (err) {
+    console.warn("Using fallback quotes:", err);
+  }
+}
 
-document.addEventListener("keydown", async (e) => {
-  const key = e.key.toLowerCase();
+window.addEventListener("resize", resize);
 
-  if (key === "1") { mode = "space"; resetStreams(); }
-  if (key === "2") { mode = "crypto"; resetStreams(); }
-  if (key === "3") { mode = "index"; resetStreams(); }
-  if (key === "4") { mode = "all"; resetStreams(); }
-
-  if (key === "+" || key === "=") speedMultiplier = Math.min(4, speedMultiplier + 0.2);
-  if (key === "-") speedMultiplier = Math.max(0.2, speedMultiplier - 0.2);
-  if (key === "0") speedMultiplier = 1.0;
-
-  if (key === "f") {
-    if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
-    else await document.exitFullscreen();
+window.addEventListener("keydown", (e) => {
+  if (e.key === "f" || e.key === "F") {
+    document.documentElement.requestFullscreen?.();
   }
 
-  if (key === "o") {
+  if (e.key === "o" || e.key === "O") {
     oled = !oled;
-    document.body.classList.toggle("oled", oled);
+  }
+
+  if (e.key === "+" || e.key === "=") {
+    speedMultiplier = Math.min(5, speedMultiplier + 0.2);
+  }
+
+  if (e.key === "-" || e.key === "_") {
+    speedMultiplier = Math.max(0.2, speedMultiplier - 0.2);
+  }
+
+  if (e.key === "0") {
+    speedMultiplier = 1.0;
   }
 });
+
+resize();
+loadQuotes();
+draw();

@@ -8,24 +8,36 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 18891;
 
-// Force public directory usage
-app.use("/" , express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/api/config", (req, res) => {
-  res.sendFile(path.join(__dirname, "config.json"));
+  res.json({
+    modes: {
+      "1": ["RKLB", "LUNR", "ASTS"],
+      "2": ["BTC", "ETH"],
+      "3": ["NVDA", "PLTR", "SPY", "QQQ"],
+      "4": ["NVDA", "BTC", "ETH", "RKLB", "LUNR", "ASTS", "PLTR", "SPY", "QQQ"]
+    }
+  });
 });
-  console.log("Quote API Access");
+
+app.get("/api/quotes", (req, res) => {
   res.json({
     updatedAt: new Date().toISOString(),
     quotes: [
-      ["NVDA",145.23,2.14],["BTC",104250,1.32],["ETH",3520,-0.42],
-      ["RKLB",22.18,3.01],["LUNR",9.72,-1.22],["ASTS",31.64,4.88],
-      ["PLTR",142.05,0.74],["SPY",548.66,0.21],["QQQ",481.91,0.35]
-    ].map(([symbol,price,changePercent]) => ({symbol,price,changePercent}))
+      { symbol: "NVDA", price: 145.23, changePercent: 2.14 },
+      { symbol: "BTC", price: 104250, changePercent: 1.32 },
+      { symbol: "ETH", price: 3520, changePercent: -0.42 },
+      { symbol: "RKLB", price: 22.18, changePercent: 3.01 },
+      { symbol: "LUNR", price: 9.72, changePercent: -1.22 },
+      { symbol: "ASTS", price: 31.64, changePercent: 4.88 },
+      { symbol: "PLTR", price: 142.05, changePercent: 0.74 },
+      { symbol: "SPY", price: 548.66, changePercent: 0.21 },
+      { symbol: "QQQ", price: 481.91, changePercent: 0.35 }
+    ]
   });
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-  console.log(`Serving files from: ${path.join(__dirname, "public")}`);
+  console.log(`OpenClaw Market Rain running at http://localhost:${PORT}`);
 });
