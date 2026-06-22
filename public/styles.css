@@ -25,3 +25,6 @@ canvas {
     color: #fff;
     text-shadow: 0 0 8px #fff;
 }
+
+/* HUD is drawn on canvas; hide old static DOM HUD. */
+#hud { display: none !important; }

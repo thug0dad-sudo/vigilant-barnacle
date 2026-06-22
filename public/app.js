@@ -1,7 +1,7 @@
 const canvas = document.getElementById("rain");
 const ctx = canvas.getContext("2d");
 
-const VERSION = "1.3";
+const VERSION = "1.4";
 let oled = false;
 let speedMultiplier = 1.0;
 let quoteStatus = "local fallback";
@@ -54,7 +54,7 @@ function makeStream(x) {
 
   return {
     x,
-    y: -Math.random() * canvas.height,
+    y: canvas.height + Math.random() * canvas.height,
     speed: 0.7 + Math.random() * 1.4,
     quote,
     tokens: Array.from({ length: trailLength }, () => makeToken(quote)),
@@ -75,11 +75,11 @@ function resize() {
 }
 
 function drawStream(stream) {
-  stream.y += stream.speed * speedMultiplier;
+  stream.y -= stream.speed * speedMultiplier;
 
-  if (stream.y > canvas.height) {
+  if (stream.y < -trailLength * rowHeight) {
     Object.assign(stream, makeStream(stream.x));
-    stream.y = -Math.random() * 300;
+    stream.y = canvas.height + Math.random() * 300;
   }
 
   stream.tick++;
