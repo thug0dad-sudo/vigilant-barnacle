@@ -1,7 +1,7 @@
 const canvas = document.getElementById("rain");
 const ctx = canvas.getContext("2d");
 
-const VERSION = "1.7";
+const VERSION = "1.8";
 let oled = false;
 let speedMultiplier = 1.0;
 let quoteStatus = "local fallback";
@@ -12,6 +12,8 @@ const QUOTE_RETRY_BASE_MS = 1200;
 const QUOTE_FETCH_TIMEOUT_MS = 4500;
 const DEFAULT_SYMBOLS = ["NVDA", "BTC", "ETH", "RKLB", "LUNR", "ASTS", "PLTR", "SPY", "QQQ"];
 const SYMBOL_STORAGE_KEY = "marketRainSelectedSymbols";
+const CONTROL_IDLE_MS = 2600;
+let controlHideTimer = null;
 
 const fontSize = 18;
 const rowHeight = 22;
@@ -62,6 +64,34 @@ function syncPicker() {
   const input = document.getElementById("tickerInput");
   if (input) input.value = selectedSymbols.join(",");
   updatePickerStatus(quoteStatus);
+}
+
+function showControls() {
+  const picker = document.getElementById("tickerPicker");
+  if (!picker) return;
+
+  picker.classList.remove("is-hidden");
+
+  clearTimeout(controlHideTimer);
+  controlHideTimer = setTimeout(() => {
+    if (document.activeElement && picker.contains(document.activeElement)) return;
+    picker.classList.add("is-hidden");
+  }, CONTROL_IDLE_MS);
+}
+
+function setupControlAutoHide() {
+  const picker = document.getElementById("tickerPicker");
+  if (!picker) return;
+
+  ["mousemove", "mousedown", "touchstart", "keydown"].forEach((eventName) => {
+    window.addEventListener(eventName, showControls, { passive: true });
+  });
+
+  picker.addEventListener("mouseenter", showControls);
+  picker.addEventListener("focusin", showControls);
+  picker.addEventListener("focusout", showControls);
+
+  showControls();
 }
 
 function setupTickerPicker() {
@@ -296,6 +326,7 @@ window.addEventListener("keydown", (e) => {
 });
 
 setupTickerPicker();
+setupControlAutoHide();
 resize();
 loadQuotes();
 setInterval(loadQuotes, 30000);
