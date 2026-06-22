@@ -1,7 +1,7 @@
 const canvas = document.getElementById("rain");
 const ctx = canvas.getContext("2d");
 
-const VERSION = "1.5";
+const VERSION = "1.6";
 let oled = false;
 let speedMultiplier = 1.0;
 let quoteStatus = "local fallback";
@@ -91,7 +91,7 @@ function drawStream(stream) {
   }
 
   for (let i = 0; i < stream.tokens.length; i++) {
-    const y = stream.y + i * rowHeight;
+    const y = stream.y - i * rowHeight;
     if (y < -40 || y > canvas.height + 40) continue;
 
     const alpha = 1 - i / trailLength;
