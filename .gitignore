@@ -5,3 +5,8 @@ npm-debug.log*
 backups/
 openclaw-tool-test.txt
 .vercel
+
+# OpenClaw local working files
+.backups/
+
+.openclaw-audits/
