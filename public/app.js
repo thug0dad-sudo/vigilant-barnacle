@@ -1,7 +1,7 @@
 const canvas = document.getElementById("rain");
 const ctx = canvas.getContext("2d");
 
-const VERSION = "1.8";
+const VERSION = "1.9";
 let oled = false;
 let speedMultiplier = 1.0;
 let quoteStatus = "local fallback";
@@ -221,6 +221,9 @@ function quoteHudText() {
 }
 
 function drawHud() {
+  const picker = document.getElementById("tickerPicker");
+  if (picker && picker.classList.contains("is-hidden")) return;
+
   ctx.font = "14px monospace";
   ctx.fillStyle = "rgba(0,255,90,0.9)";
   ctx.fillText(
