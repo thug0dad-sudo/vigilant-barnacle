@@ -1,9 +1,15 @@
 const canvas = document.getElementById("rain");
 const ctx = canvas.getContext("2d");
 
-const VERSION = "1.2";
+const VERSION = "1.3";
 let oled = false;
 let speedMultiplier = 1.0;
+let quoteStatus = "local fallback";
+let lastQuoteUpdate = null;
+
+const QUOTE_RETRY_LIMIT = 3;
+const QUOTE_RETRY_BASE_MS = 1200;
+const QUOTE_FETCH_TIMEOUT_MS = 4500;
 
 const fontSize = 18;
 const rowHeight = 22;
@@ -108,11 +114,22 @@ function drawStream(stream) {
   ctx.shadowBlur = 0;
 }
 
+function quoteHudText() {
+  if (!lastQuoteUpdate) return `Quotes ${quoteStatus}`;
+
+  const updated = new Date(lastQuoteUpdate).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+
+  return `Quotes ${quoteStatus} ${updated}`;
+}
+
 function drawHud() {
   ctx.font = "14px monospace";
   ctx.fillStyle = "rgba(0,255,90,0.9)";
   ctx.fillText(
-    `OpenClaw Market Rain · F Fullscreen · O OLED · + Faster · - Slower · 0 Reset · Speed ${speedMultiplier.toFixed(1)}x · Version ${VERSION}`,
+    `OpenClaw Market Rain · F Fullscreen · O OLED · + Faster · - Slower · 0 Reset · Speed ${speedMultiplier.toFixed(1)}x · ${quoteHudText()} · Version ${VERSION}`,
     14,
     canvas.height - 18
   );
@@ -133,16 +150,53 @@ function draw() {
   requestAnimationFrame(draw);
 }
 
-async function loadQuotes() {
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchQuotesWithTimeout() {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), QUOTE_FETCH_TIMEOUT_MS);
+
   try {
-    const res = await fetch("/api/quotes", { cache: "no-store" });
+    const res = await fetch("/api/quotes", {
+      cache: "no-store",
+      signal: controller.signal
+    });
+
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    if (Array.isArray(data.quotes) && data.quotes.length) {
-      quotes = data.quotes;
-    }
+    return await res.json();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function applyQuotePayload(data) {
+  if (!data || !Array.isArray(data.quotes) || !data.quotes.length) {
+    throw new Error("Invalid quote payload");
+  }
+
+  quotes = data.quotes;
+  lastQuoteUpdate = data.updatedAt || new Date().toISOString();
+  quoteStatus = data.source === "fallback-static" ? "static API" : "API ready";
+}
+
+async function loadQuotes(attempt = 1) {
+  try {
+    const data = await fetchQuotesWithTimeout();
+    applyQuotePayload(data);
   } catch (err) {
-    console.warn("Using fallback quotes:", err);
+    quoteStatus = attempt < QUOTE_RETRY_LIMIT
+      ? `retrying ${attempt}/${QUOTE_RETRY_LIMIT}`
+      : "local fallback";
+
+    console.warn(`Quote load failed on attempt ${attempt}:`, err);
+
+    if (attempt < QUOTE_RETRY_LIMIT) {
+      const delay = QUOTE_RETRY_BASE_MS * 2 ** (attempt - 1);
+      await sleep(delay);
+      return loadQuotes(attempt + 1);
+    }
   }
 }
 
@@ -172,4 +226,5 @@ window.addEventListener("keydown", (e) => {
 
 resize();
 loadQuotes();
+setInterval(loadQuotes, 30000);
 draw();
