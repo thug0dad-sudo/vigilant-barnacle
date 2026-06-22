@@ -8,6 +8,14 @@
 </head>
 <body>
   <canvas id="rain"></canvas>
+
+  <div id="tickerPicker" class="ticker-picker">
+    <label for="tickerInput">Tickers</label>
+    <input id="tickerInput" type="text" spellcheck="false" value="NVDA,BTC,ETH,RKLB,LUNR,ASTS,PLTR,SPY,QQQ" />
+    <button id="tickerApply" type="button">Apply</button>
+    <span id="tickerStatus">fallback ready</span>
+  </div>
+
   <script src="/app.js"></script>
 </body>
 </html>

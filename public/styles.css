@@ -28,3 +28,65 @@ canvas {
 
 /* HUD is drawn on canvas; hide old static DOM HUD. */
 #hud { display: none !important; }
+
+/* Ticker picker overlay */
+.ticker-picker {
+  position: fixed;
+  z-index: 10;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(760px, calc(100vw - 24px));
+  padding: 8px 10px;
+  border: 1px solid rgba(0, 255, 90, 0.28);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.58);
+  color: rgba(0, 255, 90, 0.92);
+  font: 13px monospace;
+  text-shadow: 0 0 8px rgba(0, 255, 90, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+.ticker-picker input {
+  width: min(430px, 48vw);
+  border: 1px solid rgba(0, 255, 90, 0.34);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.74);
+  color: #d7ffd7;
+  padding: 5px 7px;
+  font: 13px monospace;
+  outline: none;
+}
+
+.ticker-picker button {
+  border: 1px solid rgba(0, 255, 90, 0.45);
+  border-radius: 6px;
+  background: rgba(0, 60, 20, 0.7);
+  color: #d7ffd7;
+  padding: 5px 8px;
+  font: 13px monospace;
+  cursor: pointer;
+}
+
+.ticker-picker button:hover {
+  background: rgba(0, 90, 32, 0.82);
+}
+
+#tickerStatus {
+  white-space: nowrap;
+  color: rgba(210, 255, 210, 0.84);
+}
+
+@media (max-width: 720px) {
+  .ticker-picker {
+    right: 12px;
+    flex-wrap: wrap;
+  }
+
+  .ticker-picker input {
+    width: 100%;
+    flex-basis: 100%;
+  }
+}

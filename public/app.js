@@ -1,7 +1,7 @@
 const canvas = document.getElementById("rain");
 const ctx = canvas.getContext("2d");
 
-const VERSION = "1.6";
+const VERSION = "1.7";
 let oled = false;
 let speedMultiplier = 1.0;
 let quoteStatus = "local fallback";
@@ -10,11 +10,15 @@ let lastQuoteUpdate = null;
 const QUOTE_RETRY_LIMIT = 3;
 const QUOTE_RETRY_BASE_MS = 1200;
 const QUOTE_FETCH_TIMEOUT_MS = 4500;
+const DEFAULT_SYMBOLS = ["NVDA", "BTC", "ETH", "RKLB", "LUNR", "ASTS", "PLTR", "SPY", "QQQ"];
+const SYMBOL_STORAGE_KEY = "marketRainSelectedSymbols";
 
 const fontSize = 18;
 const rowHeight = 22;
 const columnWidth = 92;
 const trailLength = 22;
+
+let selectedSymbols = loadSelectedSymbols();
 
 let quotes = [
   { symbol: "NVDA", price: 145.23, changePercent: 2.14 },
@@ -29,6 +33,59 @@ let quotes = [
 ];
 
 let streams = [];
+
+function normalizeSymbols(text) {
+  const symbols = String(text || "")
+    .split(/[,\s]+/)
+    .map((s) => s.trim().toUpperCase().replace(/[^A-Z0-9.^-]/g, ""))
+    .filter(Boolean);
+
+  return [...new Set(symbols)].slice(0, 20);
+}
+
+function loadSelectedSymbols() {
+  const saved = localStorage.getItem(SYMBOL_STORAGE_KEY);
+  const symbols = normalizeSymbols(saved || DEFAULT_SYMBOLS.join(","));
+  return symbols.length ? symbols : DEFAULT_SYMBOLS;
+}
+
+function saveSelectedSymbols(symbols) {
+  localStorage.setItem(SYMBOL_STORAGE_KEY, symbols.join(","));
+}
+
+function updatePickerStatus(text) {
+  const status = document.getElementById("tickerStatus");
+  if (status) status.textContent = text;
+}
+
+function syncPicker() {
+  const input = document.getElementById("tickerInput");
+  if (input) input.value = selectedSymbols.join(",");
+  updatePickerStatus(quoteStatus);
+}
+
+function setupTickerPicker() {
+  const input = document.getElementById("tickerInput");
+  const button = document.getElementById("tickerApply");
+
+  if (!input || !button) return;
+
+  const apply = () => {
+    const next = normalizeSymbols(input.value);
+    selectedSymbols = next.length ? next : DEFAULT_SYMBOLS;
+    saveSelectedSymbols(selectedSymbols);
+    quoteStatus = "loading";
+    updatePickerStatus("loading");
+    loadQuotes();
+  };
+
+  button.addEventListener("click", apply);
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") apply();
+  });
+
+  syncPicker();
+}
 
 function formatPrice(n) {
   if (n >= 1000) return Math.round(n).toLocaleString();
@@ -114,6 +171,14 @@ function drawStream(stream) {
   ctx.shadowBlur = 0;
 }
 
+function sourceLabel(source) {
+  if (source === "finnhub-live") return "live Finnhub";
+  if (source === "stooq-delayed") return "delayed public";
+  if (source === "mixed") return "mixed";
+  if (source === "fallback-static") return "static fallback";
+  return source || "unknown";
+}
+
 function quoteHudText() {
   if (!lastQuoteUpdate) return `Quotes ${quoteStatus}`;
 
@@ -129,7 +194,7 @@ function drawHud() {
   ctx.font = "14px monospace";
   ctx.fillStyle = "rgba(0,255,90,0.9)";
   ctx.fillText(
-    `OpenClaw Market Rain · F Fullscreen · O OLED · + Faster · - Slower · 0 Reset · Speed ${speedMultiplier.toFixed(1)}x · ${quoteHudText()} · Version ${VERSION}`,
+    `OpenClaw Market Rain · F Fullscreen · O OLED · + Faster · - Slower · 0 Reset · Speed ${speedMultiplier.toFixed(1)}x · ${quoteHudText()} · ${selectedSymbols.length} tickers · Version ${VERSION}`,
     14,
     canvas.height - 18
   );
@@ -157,9 +222,10 @@ function sleep(ms) {
 async function fetchQuotesWithTimeout() {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), QUOTE_FETCH_TIMEOUT_MS);
+  const params = new URLSearchParams({ symbols: selectedSymbols.join(",") });
 
   try {
-    const res = await fetch("/api/quotes", {
+    const res = await fetch(`/api/quotes?${params.toString()}`, {
       cache: "no-store",
       signal: controller.signal
     });
@@ -178,7 +244,9 @@ function applyQuotePayload(data) {
 
   quotes = data.quotes;
   lastQuoteUpdate = data.updatedAt || new Date().toISOString();
-  quoteStatus = data.source === "fallback-static" ? "static API" : "API ready";
+  quoteStatus = sourceLabel(data.source);
+  updatePickerStatus(`${quoteStatus} · ${quotes.length}/${selectedSymbols.length}`);
+  resetStreams();
 }
 
 async function loadQuotes(attempt = 1) {
@@ -190,6 +258,7 @@ async function loadQuotes(attempt = 1) {
       ? `retrying ${attempt}/${QUOTE_RETRY_LIMIT}`
       : "local fallback";
 
+    updatePickerStatus(quoteStatus);
     console.warn(`Quote load failed on attempt ${attempt}:`, err);
 
     if (attempt < QUOTE_RETRY_LIMIT) {
@@ -203,6 +272,8 @@ async function loadQuotes(attempt = 1) {
 window.addEventListener("resize", resize);
 
 window.addEventListener("keydown", (e) => {
+  if (e.target && ["INPUT", "TEXTAREA"].includes(e.target.tagName)) return;
+
   if (e.key === "f" || e.key === "F") {
     document.documentElement.requestFullscreen?.();
   }
@@ -224,6 +295,7 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
+setupTickerPicker();
 resize();
 loadQuotes();
 setInterval(loadQuotes, 30000);

@@ -1,22 +1,21 @@
-const FALLBACK_QUOTES = [
-  { symbol: "NVDA", price: 145.23, changePercent: 2.14 },
-  { symbol: "BTC", price: 104250, changePercent: 1.32 },
-  { symbol: "ETH", price: 3520, changePercent: -0.42 },
-  { symbol: "RKLB", price: 22.18, changePercent: 3.01 },
-  { symbol: "LUNR", price: 9.72, changePercent: -1.22 },
-  { symbol: "ASTS", price: 31.64, changePercent: 4.88 },
-  { symbol: "PLTR", price: 142.05, changePercent: 0.74 },
-  { symbol: "SPY", price: 548.66, changePercent: 0.21 },
-  { symbol: "QQQ", price: 481.91, changePercent: 0.35 }
-];
+import { getQuotes } from "../lib/quoteService.js";
 
-export default function handler(req, res) {
-  res.setHeader("Cache-Control", "no-store");
-  res.status(200).json({
-    status: "ok",
-    source: "fallback-static",
-    updatedAt: new Date().toISOString(),
-    quoteCount: FALLBACK_QUOTES.length,
-    quotes: FALLBACK_QUOTES
-  });
+export default async function handler(req, res) {
+  try {
+    res.setHeader("Cache-Control", "s-maxage=30, stale-while-revalidate=60");
+    const url = new URL(req.url, "https://market-rain.vercel.app");
+    const symbols = url.searchParams.get("symbols") || "";
+    const payload = await getQuotes(symbols, process.env);
+    res.status(200).json(payload);
+  } catch (err) {
+    console.error("Quote API failed:", err);
+    res.status(500).json({
+      status: "error",
+      source: "error",
+      updatedAt: new Date().toISOString(),
+      quoteCount: 0,
+      quotes: [],
+      error: "quote_api_failed"
+    });
+  }
 }
